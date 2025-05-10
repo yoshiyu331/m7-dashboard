@@ -23,9 +23,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="ja">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased font-sans text-gray-800 bg-white`}
+        style={{ fontFamily: 'Geist, Inter, "Noto Sans JP", Arial, sans-serif' }}
       >
         {children}
       </body>
