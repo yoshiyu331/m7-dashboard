@@ -42,16 +42,32 @@ const formatNumber = (value: number, currency: Currency) => {
 export default function Page() {
   const [data, setData] = useState<Record[]>([])
   const [currency, setCurrency] = useState<Currency>('USD')
+  const [selectedTickers, setSelectedTickers] = useState<string[]>([])
 
   useEffect(() => {
     fetch('/api/income')
       .then(res => res.json())
-      .then(setData)
+      .then((d) => {
+        setData(d)
+        if (d.length > 0) {
+          // 初期状態は全社選択
+          const allTickers = Array.from(new Set(d.map((item: Record) => item.ticker))) as string[];
+          setSelectedTickers(allTickers)
+        }
+      })
   }, [])
 
   const chartData = transformData(data)
   const years = [2020, 2021, 2022, 2023, 2024]
   const lastYear = years[years.length - 1]
+
+  // 企業名リスト
+  const tickers = Array.from(new Set(data.map(d => d.ticker)))
+
+  // 選択した企業のみ表示
+  const filteredChartData = selectedTickers.length > 0
+    ? chartData.filter((row: any) => selectedTickers.includes(row.ticker))
+    : chartData
 
   // 各企業の最初の非ゼロ年をMapで持つ
   const firstNonZeroYearMap = new Map<string, number>()
@@ -64,14 +80,22 @@ export default function Page() {
     }
   })
 
+  // ボタンのトグル処理
+  const handleTickerToggle = (ticker: string) => {
+    setSelectedTickers(prev =>
+      prev.includes(ticker)
+        ? prev.filter(t => t !== ticker)
+        : [...prev, ticker]
+    )
+  }
+
   // ラベル描画関数
   const renderCustomLabel = (props: any) => {
     const { x, y, width, value, index, dataKey } = props
-    const row = chartData[index]
+    const row = filteredChartData[index]
     const ticker = row.ticker
     const year = dataKey
     const firstYear = firstNonZeroYearMap.get(ticker)
-    // 値が0でない、かつ「最初の非ゼロ年」または「最新年」だけラベルを返す
     if (
       typeof value === 'number' &&
       value > 0 &&
@@ -106,12 +130,24 @@ export default function Page() {
             {currency === 'USD' ? '円表示に切り替え（150円/ドル換算）' : 'ドル表示に切り替え'}
           </button>
         </div>
+        {/* 企業名ボタン（複数選択可） */}
+        <div className="flex flex-wrap gap-2 mb-6">
+          {tickers.map(ticker => (
+            <button
+              key={ticker}
+              onClick={() => handleTickerToggle(ticker)}
+              className={`px-4 py-1 rounded-lg border text-sm font-medium transition-colors ${selectedTickers.includes(ticker) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'}`}
+            >
+              {ticker}
+            </button>
+          ))}
+        </div>
         <p className="text-gray-500 mb-6 text-sm md:text-base">
           年ごとに主要テック企業の売上を比較できます。
         </p>
         <div className="bg-white shadow-xl rounded-2xl p-4 md:p-6 border border-gray-200">
           <ResponsiveContainer width="100%" height={400}>
-            <BarChart data={chartData} barCategoryGap={16}>
+            <BarChart data={filteredChartData} barCategoryGap={16}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis dataKey="ticker" tick={{ fill: '#334155', fontSize: 12 }} />
               <YAxis 
